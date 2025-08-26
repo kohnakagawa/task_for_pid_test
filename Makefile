@@ -10,7 +10,7 @@
 #  D_arm64: ad-hoc signed target with Hardened Runtime + get-task-allow entitlement (arm64)
 #  E_x86_64: ad-hoc signed target, no Hardened Runtime + get-task-allow entitlement (x86_64)
 #  E_arm64: ad-hoc signed target, no Hardened Runtime + get-task-allow entitlement (arm64)
-#  F: checker that calls task_for_pid(pid)
+#  F: checker that calls task_for_pid(pid) with com.apple.security.cs.debugger entitlement
 
 CC=cc
 CFLAGS=-Wall -O2
@@ -124,7 +124,10 @@ $(E_arm64): $(A_arm64)
 $(F): $(BIN) $(SRC)/check_task.c
 	$(CC) $(CFLAGS) -o $@ $(SRC)/check_task.c
 
-
+add_cs_debugger: $(F)
+	@echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>com.apple.security.cs.debugger</key><true/></dict></plist>' > /tmp/debugger_entitlements.plist
+	codesign -s - --entitlements /tmp/debugger_entitlements.plist $(F) >/dev/null 2>&1 || (echo "codesign failed for check_task (ad-hoc + cs.debugger entitlement)."; exit 1)
+	@rm -f /tmp/debugger_entitlements.plist
 
 clean:
 	@rm -rf $(BIN) .pidA_x86_64 .pidB_x86_64 .pidC_x86_64 .pidD_x86_64 .pidE_x86_64 .pidA_arm64 .pidB_arm64 .pidC_arm64 .pidD_arm64 .pidE_arm64
@@ -143,17 +146,16 @@ run: all
 
 # Run experiment for x86_64 architecture
 run_x86_64: all_x86_64
-	@echo "Launching x86_64 targets as login user..."
-	@echo "Note: Targets will run with login user privileges, check_task will run with sudo privileges"
-	@su - $$(whoami) -c "$(A_x86_64) >/dev/null 2>&1 & echo \$$! > $(CURRENT_DIR)/.pidA_x86_64" &
+	@echo "Launching x86_64 targets..."
+	@$(A_x86_64) >/dev/null 2>&1 & echo $$! > $(CURRENT_DIR)/.pidA_x86_64
 	@sleep 1
-	@su - $$(whoami) -c "$(B_x86_64) >/dev/null 2>&1 & echo \$$! > $(CURRENT_DIR)/.pidB_x86_64" &
+	@$(B_x86_64) >/dev/null 2>&1 & echo $$! > $(CURRENT_DIR)/.pidB_x86_64
 	@sleep 1
-	@su - $$(whoami) -c "$(C_x86_64) >/dev/null 2>&1 & echo \$$! > $(CURRENT_DIR)/.pidC_x86_64" &
+	@$(C_x86_64) >/dev/null 2>&1 & echo $$! > $(CURRENT_DIR)/.pidC_x86_64
 	@sleep 1
-	@su - $$(whoami) -c "$(D_x86_64) >/dev/null 2>&1 & echo \$$! > $(CURRENT_DIR)/.pidD_x86_64" &
+	@$(D_x86_64) >/dev/null 2>&1 & echo $$! > $(CURRENT_DIR)/.pidD_x86_64
 	@sleep 1
-	@su - $$(whoami) -c "$(E_x86_64) >/dev/null 2>&1 & echo \$$! > $(CURRENT_DIR)/.pidE_x86_64" &
+	@$(E_x86_64) >/dev/null 2>&1 & echo $$! > $(CURRENT_DIR)/.pidE_x86_64
 	@sleep 1
 	@PID_A=$$(cat .pidA_x86_64); PID_B=$$(cat .pidB_x86_64); PID_C=$$(cat .pidC_x86_64); PID_D=$$(cat .pidD_x86_64); PID_E=$$(cat .pidE_x86_64); \
 	echo ""; \
@@ -195,17 +197,16 @@ run_x86_64: all_x86_64
 
 # Run experiment for arm64 architecture
 run_arm64: all_arm64
-	@echo "Launching arm64 targets as login user..."
-	@echo "Note: Targets will run with login user privileges, check_task will run with sudo privileges"
-	@su - $$(whoami) -c "$(A_arm64) >/dev/null 2>&1 & echo \$$! > $(CURRENT_DIR)/.pidA_arm64" &
+	@echo "Launching arm64 targets..."
+	@$(A_arm64) >/dev/null 2>&1 & echo $$! > $(CURRENT_DIR)/.pidA_arm64
 	@sleep 1
-	@su - $$(whoami) -c "$(B_arm64) >/dev/null 2>&1 & echo \$$! > $(CURRENT_DIR)/.pidB_arm64" &
+	@$(B_arm64) >/dev/null 2>&1 & echo $$! > $(CURRENT_DIR)/.pidB_arm64
 	@sleep 1
-	@su - $$(whoami) -c "$(C_arm64) >/dev/null 2>&1 & echo \$$! > $(CURRENT_DIR)/.pidC_arm64" &
+	@$(C_arm64) >/dev/null 2>&1 & echo $$! > $(CURRENT_DIR)/.pidC_arm64
 	@sleep 1
-	@su - $$(whoami) -c "$(D_arm64) >/dev/null 2>&1 & echo \$$! > $(CURRENT_DIR)/.pidD_arm64" &
+	@$(D_arm64) >/dev/null 2>&1 & echo $$! > $(CURRENT_DIR)/.pidD_arm64
 	@sleep 1
-	@su - $$(whoami) -c "$(E_arm64) >/dev/null 2>&1 & echo \$$! > $(CURRENT_DIR)/.pidE_arm64" &
+	@$(E_arm64) >/dev/null 2>&1 & echo $$! > $(CURRENT_DIR)/.pidE_arm64
 	@sleep 1
 	@PID_A=$$(cat .pidA_arm64); PID_B=$$(cat .pidB_arm64); PID_C=$$(cat .pidC_arm64); PID_D=$$(cat .pidD_arm64); PID_E=$$(cat .pidE_arm64); \
 	echo ""; \
